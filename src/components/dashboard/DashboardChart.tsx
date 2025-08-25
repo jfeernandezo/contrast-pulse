@@ -145,4 +145,4 @@ export function DashboardChart({ performanceData }: DashboardChartProps) {
                 dataKey="valorConversao"
                 fill="hsl(var(--chart-accent))"
                 name="Valor da Conversão"
-                radius={[2, 2,
+                radius={[2, 2, 0, 0]}
