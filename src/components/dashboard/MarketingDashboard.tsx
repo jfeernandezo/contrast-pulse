@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TrendingUp, DollarSign, Target, CreditCard } from "lucide-react";
 import { KpiCard } from "./KpiCard";
 import { DashboardChart } from "./DashboardChart";
@@ -20,12 +21,63 @@ interface PerformanceData {
   taxa_conversao: string;
 }
 
-// Define as props que o componente vai receber
-interface MarketingDashboardProps {
-  performanceData: PerformanceData[];
-}
+export function MarketingDashboard() {
+  // --- Estado para armazenar os dados e o status de carregamento ---
+  const [performanceData, setPerformanceData] = useState<PerformanceData[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function MarketingDashboard({ performanceData }: MarketingDashboardProps) {
+  // --- Hook para buscar os dados quando o componente carregar ---
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      // LEITURA CORRETA DAS VARIÁVEIS DE AMBIENTE COM VITE
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        setError("As chaves de acesso ao Supabase não foram encontradas no arquivo .env.local. Verifique se os nomes começam com VITE_");
+        setIsLoading(false);
+        return;
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      const { data, error } = await supabase
+        .from('desempenho_ads')
+        .select('*')
+        .order('data', { ascending: false });
+
+      if (error) {
+        console.error("Erro ao buscar dados do Supabase:", error);
+        setError("Falha ao carregar os dados.");
+      } else {
+        setPerformanceData(data);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchPerformanceData();
+  }, []); // O array vazio [] faz com que isso rode apenas uma vez
+
+  // --- Lógica de Renderização ---
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-foreground">Carregando dados...</p>
+      </div>
+    );
+  }
+
+  if (error || !performanceData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-destructive">{error || "Nenhum dado encontrado."}</p>
+      </div>
+    );
+  }
+  
   // --- Lógica para calcular os totais para os KPI Cards ---
   const totalValorConversao = performanceData.reduce((acc, item) => acc + item.valor_conversao, 0);
   const totalValorInvestido = performanceData.reduce((acc, item) => acc + item.valor_usado, 0);
@@ -93,32 +145,4 @@ export function MarketingDashboard({ performanceData }: MarketingDashboardProps)
       </footer>
     </div>
   );
-}
-
-// --- FUNÇÃO PARA BUSCAR DADOS DO SUPABASE ---
-export async function getServerSideProps() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Supabase URL or Key is not defined in .env.local");
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
-  const { data, error } = await supabase
-    .from('desempenho_ads')
-    .select('*')
-    .order('data', { ascending: false });
-
-  if (error) {
-    console.error('Erro ao buscar dados do Supabase:', error);
-    return { props: { performanceData: [] } };
-  }
-
-  return {
-    props: {
-      performanceData: data,
-    },
-  };
 }

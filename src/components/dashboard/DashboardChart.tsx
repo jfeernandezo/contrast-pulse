@@ -151,3 +151,6 @@ export function DashboardChart({ performanceData }: DashboardChartProps) {
           </ResponsiveContainer>
         </div>
       </div>
+    </div>
+  );
+}
